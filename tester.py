@@ -66,7 +66,7 @@ class Tester:
         filename = filedialog.askopenfilename(title="Open dictionary", initialdir="./", filetypes=filetypes)
         
         try:
-            with open(filename) as csvfile:
+            with open(filename, encoding="utf8") as csvfile:
                 dictionaryfile = csv.reader(csvfile)
 
                 dictionary = list()
@@ -79,6 +79,7 @@ class Tester:
                     return
 
                 self._dictionary = dictionary
+                
             self._next_word()
             self._give_up_button["state"] = "normal"
             self._check_button["state"] = "normal"
