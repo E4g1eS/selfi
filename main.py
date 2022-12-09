@@ -1,10 +1,181 @@
-from tkinter import *
+# pyright: reportUnknownVariableType=false
+import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import csv
 import random
+from typing import Any, Self
+import logging
 
+class Word:
+    text : str
+    translations : set[Self]
+
+    def __init__(self, text : str):
+        self.text = text
+        self.translations = set()
+
+    def __str__(self) -> str:
+        s = "Word '" + self.text + "' has translations: "
+
+        for word in self.translations:
+            s += "'" + word.text + "', "
+
+        return s
+
+class Language:
+    name : str
+    _words : list[Word]
+
+    def __init__(self, name="unknown"):
+        self.name = name
+        self._words = list()
+
+    def __str__(self) -> str:
+        s = self.name + ":\n"
+        for word in self._words:
+            s += str(word) + "\n"
+        return s
+
+    def __contains__(self, key : str | Word) -> bool:
+        if type(key) == Word:
+            for word in self._words:
+                return key in self._words
+
+        if type(key) == str:
+            for word in self._words:
+                if key == word.text: return True
+
+        return False
+
+    def __getitem__(self, key : str) -> Word:
+        for word in self._words:
+            if word.text == key:
+                return word
+
+        raise KeyError("No such word exists in language!")
+
+    def get_or_create(self, word : str) -> Word:
+        if word in self:
+            return self[word]
+
+        created = Word(word)
+        self._words.append(created)
+        return created
+
+class Dictionary:
+    language_a : Language
+    language_b : Language
+
+    def __init__(self):
+        self.language_a = Language("Language A")
+        self.language_b = Language("Language B")
+
+    def __str__(self) -> str:
+        return str(self.language_a) + str(self.language_b)
+
+class Tester:
+    _dictionary : Dictionary | None
+    _translate_word : Word | None
+
+    def __init__(self):
+        self._dictionary = None
+        self._translate_word = None
+
+    def open_dictionary_file(self) -> bool:
+        filetypes = (
+            ('Comma separated values', '*.csv'),
+            ('All files', '*.*')
+        )
+
+        filename = filedialog.askopenfilename(title="Open dictionary", initialdir="./", filetypes=filetypes)
+
+        new_dictionary = None
+
+        try:
+            with open(filename, encoding="utf8") as csvfile:
+                dictionary_file = csv.reader(csvfile)
+                new_dictionary = self._parse_dictionary_file(dictionary_file)
+
+        except IOError:
+            logging.error("Could not open file!")
+            return False
+
+        if new_dictionary is None:
+            logging.error("Could not parse file!")
+            return False
+
+        self._dictionary = new_dictionary
+        return True
+
+    def _parse_dictionary_file(self, dictionary_file) -> Dictionary | None:
+
+        dictionary_list = list()
+
+        for row in dictionary_file:
+            dictionary_list.append(row)
+
+        logging.info("Loaded: " + str(dictionary_list))
+
+        if not self._validate_dictionary_list(dictionary_list):
+            return None
+
+        dictionary = Dictionary()
+
+        for row in dictionary_list:
+
+            word_a = dictionary.language_a.get_or_create(row[0])
+            word_b = dictionary.language_b.get_or_create(row[1])
+
+            word_a.translations.add(word_b)
+            word_b.translations.add(word_a)
+
+        logging.info("Dictionary:\n" + str(dictionary))
+
+        return dictionary
+
+    @staticmethod
+    def _validate_dictionary_list(dictionary_list : list) -> bool:
+        if len(dictionary_list) < 2:
+            logging.error("File contains less than 2 rows!")
+            return False
+
+        for entry in dictionary_list:
+            
+            if len(entry) < 2:
+                logging.error("File contains words without translations!")
+                return False
+
+            try:
+                str(entry[0])
+                str(entry[1])
+
+            except ValueError:
+                logging.error("Some content in file cannot be parsed as string!")
+                return False
+
+        return True
+
+
+class UI:
+    _root : tk.Tk
+    _tester : Tester
+
+    # Widgets:
+
+    def __init__(self):
+        self._tester = Tester()
+        self._tester.open_dictionary_file()
+
+        self._root = tk.Tk()
+        self._init_ui()
+
+        self._root.mainloop()
+
+    def _init_ui(self):
+        pass
+"""
 class Tester:
     _root : Tk
     _translate_word : Label
@@ -138,10 +309,8 @@ class Tester:
 
     def _reset_feedback(self):
         self._feedback_label.configure(text="...")
-
-
-def main():
-    tester = Tester()
+"""
 
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(filename="log.log", encoding="utf-8", level=logging.DEBUG)
+    ui = UI()
