@@ -12,7 +12,7 @@ class Word:
     text : str
     translations : set[Self]
 
-    def __init__(self, text : str):
+    def __init__(self, text : str) -> None:
         self.text = text
         self.translations = set()
 
@@ -28,12 +28,12 @@ class Language:
     name : str
     _words : list[Word]
 
-    def __init__(self, name="unknown"):
+    def __init__(self, name="unknown") -> None:
         self.name = name
         self._words = list()
 
     def __str__(self) -> str:
-        s = self.name + ":\n"
+        s = "### " + self.name + ":\n"
         for word in self._words:
             s += str(word) + "\n"
         return s
@@ -68,7 +68,7 @@ class Dictionary:
     language_a : Language
     language_b : Language
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.language_a = Language("Language A")
         self.language_b = Language("Language B")
 
@@ -79,22 +79,15 @@ class Tester:
     _dictionary : Dictionary | None
     _translate_word : Word | None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._dictionary = None
         self._translate_word = None
 
-    def open_dictionary_file(self) -> bool:
-        filetypes = (
-            ('Comma separated values', '*.csv'),
-            ('All files', '*.*')
-        )
-
-        filename = filedialog.askopenfilename(title="Open dictionary", initialdir="./", filetypes=filetypes)
-
+    def open_dictionary_file(self, filepath : str) -> bool:
         new_dictionary = None
 
         try:
-            with open(filename, encoding="utf8") as csvfile:
+            with open(filepath, encoding="utf8") as csvfile:
                 dictionary_file = csv.reader(csvfile)
                 new_dictionary = self._parse_dictionary_file(dictionary_file)
 
@@ -123,6 +116,12 @@ class Tester:
 
         dictionary = Dictionary()
 
+        # Set language names
+        dictionary.language_a.name = dictionary_list[0][0]
+        dictionary.language_b.name = dictionary_list[0][1]
+        dictionary_list.pop(0)
+
+        # Fill languages with words
         for row in dictionary_list:
 
             word_a = dictionary.language_a.get_or_create(row[0])
@@ -137,8 +136,8 @@ class Tester:
 
     @staticmethod
     def _validate_dictionary_list(dictionary_list : list) -> bool:
-        if len(dictionary_list) < 2:
-            logging.error("File contains less than 2 rows!")
+        if len(dictionary_list) < 3:
+            logging.error("File contains less than 3 rows!")
             return False
 
         for entry in dictionary_list:
@@ -155,6 +154,7 @@ class Tester:
                 logging.error("Some content in file cannot be parsed as string!")
                 return False
 
+        logging.info("File is valid.")
         return True
 
 
@@ -164,17 +164,55 @@ class UI:
 
     # Widgets:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tester = Tester()
-        self._tester.open_dictionary_file()
 
         self._root = tk.Tk()
         self._init_ui()
 
         self._root.mainloop()
 
-    def _init_ui(self):
-        pass
+    def _init_ui(self) -> None:
+
+        source_frame = tk.Frame(self._root)
+        source_frame.pack()
+        self._translate_word = tk.Label(source_frame, text = "No dictionary yet.")
+        self._translate_word.pack()
+        
+        translation_frame = tk.Frame(self._root)
+        translation_frame.pack()
+        translation_label = tk.Label(translation_frame, text = "Translation:")
+        translation_label.grid(row=0, column=0)
+        self._input_field = tk.Entry(translation_frame)
+        self._input_field.grid(row=0, column=1)
+        self._check_button = tk.Button(translation_frame, text="Check")
+        self._check_button.grid(row=0, column=2)
+        self._check_button["state"] = "disabled"
+        self._give_up_button = tk.Button(translation_frame, text="Give up")
+        self._give_up_button.grid(row=0, column=3)
+        self._give_up_button["state"] = "disabled"
+
+        feedback_frame = tk.Frame(self._root)
+        feedback_frame.pack()
+        self._feedback_label = tk.Label(feedback_frame, text = "Open dictionary file first!")
+        self._feedback_label.pack()
+
+        file_frame = tk.Frame(self._root)
+        file_frame.pack()
+        open_button = tk.Button(file_frame, text = "Open .csv dictionary file...", command = self._open_csv)
+        open_button.pack()
+
+    def _open_csv(self) -> None:
+        filetypes = (
+            ('Comma separated values', '*.csv'),
+            ('All files', '*.*')
+        )
+
+        filepath = filedialog.askopenfilename(title="Open dictionary", initialdir="./", filetypes=filetypes)
+        if not filepath: return
+        self._tester.open_dictionary_file(filepath)
+
+
 """
 class Tester:
     _root : Tk
@@ -312,5 +350,6 @@ class Tester:
 """
 
 if __name__ == "__main__":
-    logging.basicConfig(filename="log.log", encoding="utf-8", level=logging.DEBUG)
+    logging.basicConfig(filename="debug.log", encoding="utf-8", level=logging.DEBUG)
+    logging.info("PROGRAM START")
     ui = UI()
